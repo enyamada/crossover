@@ -1,0 +1,82 @@
+#!/bin/bash
+set -eu
+
+#
+# This script saves files from a given log directory to AWS S3. By default,
+# only files created no more than 5 days are considered. The number of days
+# can be changed using the -n|--numdays=x option. The directory full path name
+# can be defined using -d|--log-dir=/full/path option.
+#
+# The AWS_ACCESS_KEY_ID, AWS_KEY_NAME and AWS_SECRET_ACCESS_KEY env variables
+# should be set properly in order to have access to AWS. ALternatively,
+# a ~/.aws/credentials file can be used.
+# 
+
+
+LOG_DIR=/usr/local/apache2/logs
+NUM_DAYS=5
+BUCKET=crossover-sa-east-1
+
+get_options() {
+	for i in "$@"
+	do
+		case $i in
+		    -n=*|--numdays=*)
+		       NUM_DAYS="${i#*=}"
+		       shift # past argument=value
+		       ;;
+		    -d=*|--log-dir=*)
+		       LOG_DIR="${i#*=}"
+		       shift # past argument=value
+		       ;;
+		    -b=*|--bucket=*)
+		       BUCKET="${i#*=}"
+		       shift # past argument=value
+		       ;;
+		    *)
+		       echo "Options\n"
+		       echo "-n|--numdays=999 (number of log days to be saved; defaults to 5)"
+		       echo "-d|--log-dir=/my/path (path where the logs are; default=/usr/local/apache2/logs)"
+		       echo "-b|--bucket=s3-bucket-name (defaults to crossover-sa-east-1)"
+		       exit 1
+		       ;;
+		   
+		esac
+	done
+}
+
+notify() {
+
+	# Sends a notification to let the admin know that this script failed
+	# For now, we're simply sending an email. Depending on the context,
+        # a alert or trap should be sent to the appropriate server.
+        
+        RECIPIENT="admin@acme.com"
+        echo $1 | mail -s "ALERT: log backup script failed" $RECIPIENT
+        echo $1
+}
+
+	
+get_options $@
+
+echo $NUM_DAYS
+CURRENT_DATETIME=`date +%Y-%m-%d:%H:%M:%S`
+LOG_DIR_FLATTED=`echo $LOG_DIR|sed 's/\//_/g'`
+LIST_FILES=`find $LOG_DIR -ctime -$NUM_DAYS`
+
+# Creates a .tgz archive
+ARCHIVE_NAME=/tmp/log-backup-${LOG_DIR_FLATTED}-${CURRENT_DATETIME}.tgz
+tar czf $ARCHIVE_NAME $LIST_FILES  || { \
+ 	notify "Local archive creation failed."; \ 
+        exit 1; }
+
+
+# Copies to S3
+aws s3 cp $ARCHIVE_NAME s3://$BUCKET || { \
+       notify "Something went wrong when copying to S3. Please check"; \
+       rm $ARCHIVE_NAME
+       exit 1; }
+
+# If it' s ok, remove local copy
+rm $ARCHIVE_NAME
+exit 0

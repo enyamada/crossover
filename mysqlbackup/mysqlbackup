@@ -2,10 +2,9 @@
 set -eu
 
 #
-# This script saves files from a given log directory to AWS S3. By default,
-# only files created no more than 5 days are considered. The number of days
-# can be changed using the -n|--numdays=x option. The directory full path name
-# can be defined using -d|--log-dir=/full/path option.
+# This script dumps a Mysql database and then saves to the local disk temporarily
+# until it's uploaded to a aws s3 bucket.
+
 #
 # The AWS_ACCESS_KEY_ID, AWS_KEY_NAME and AWS_SECRET_ACCESS_KEY env variables
 # should be set properly in order to have access to AWS. ALternatively,
@@ -13,31 +12,43 @@ set -eu
 # 
 
 
-LOG_DIR=/usr/local/apache2/logs
-NUM_DAYS=5
+USER=root
+PASSWORD=xover
+HOST=127.0.0.1
 BUCKET=crossover-sa-east-1
+LOCAL_DIR=/tmp
 
 get_options() {
 	for i in "$@"
 	do
 		case $i in
-		    -n=*|--numdays=*)
-		       NUM_DAYS="${i#*=}"
+		    -u=*|--user=*)
+		       USER="${i#*=}"
 		       shift # past argument=value
 		       ;;
-		    -d=*|--log-dir=*)
-		       LOG_DIR="${i#*=}"
+		    -p=*|--password=*)
+		       PASSWORD="${i#*=}"
+		       shift # past argument=value
+		       ;;
+		    -h=*|--host=*)
+		       HOST="${i#*=}"
 		       shift # past argument=value
 		       ;;
 		    -b=*|--bucket=*)
 		       BUCKET="${i#*=}"
 		       shift # past argument=value
 		       ;;
+		    -d=*|--directory=*)
+		       LOCAL_DIR="${i#*=}"
+		       shift # past argument=value
+		       ;;
 		    *)
 		       echo "Options\n"
-		       echo "-n|--numdays=999 (number of log days to be saved; defaults to 5)"
-		       echo "-d|--log-dir=/my/path (path where the logs are; default=/usr/local/apache2/logs)"
+		       echo "-u|--user=xxx (mysql user to be used to connect)
+		       echo "-p|--password=yyy (mysql user password)"
+		       echo "-h|--host=192.168.0.1 (host; defaults to 127.0.0.1)"
 		       echo "-b|--bucket=s3-bucket-name (defaults to crossover-sa-east-1)"
+		       echo "-d|--directory=/full/path to store locally the dumps (defaults to /tmp)"
 		       exit 1
 		       ;;
 		   
@@ -52,27 +63,24 @@ notify() {
         # a alert or trap should be sent to the appropriate server.
         
         RECIPIENT="admin@acme.com"
-        echo $1 | mail -s "ALERT: log backup script failed" $RECIPIENT
+        echo $1 | mail -s "ALERT: mysql backup script failed" $RECIPIENT
         echo $1
 }
 
-	
+# Parse options passed in	
 get_options $@
 
-echo $NUM_DAYS
+# Determine the archive name
 CURRENT_DATETIME=`date +%Y%m%d-%H%M%S`
-LOG_DIR_FLATTED=`echo $LOG_DIR|sed 's/\//_/g'`
-LIST_FILES=`find $LOG_DIR -ctime -$NUM_DAYS`
+ARCHIVE_NAME=${LOCAL_DIR}/mysql-backup-${CURRENT_DATETIME}.tgz
 
-# Creates a .tgz archive
-ARCHIVE_NAME=/tmp/log-backup-${LOG_DIR_FLATTED}-${CURRENT_DATETIME}.tgz
-tar czf $ARCHIVE_NAME $LIST_FILES  || { \
- 	notify "Local archive creation failed."; \ 
+# Dumps the database server
+mysqldump --opt --user ${USER} --password=${PASSWORD} --host=${HOST} --all-databases > ${ARCHIVE_NAME} || { \
+ 	notify "Mysql dump failed."; \ 
         exit 1; }
 
-
 # Copies to S3
-aws s3 cp $ARCHIVE_NAME s3://$BUCKET || { \
+#aws s3 cp $ARCHIVE_NAME s3://$BUCKET || { \
        notify "Something went wrong when copying to S3. Please check"; \
        rm $ARCHIVE_NAME
        exit 1; }

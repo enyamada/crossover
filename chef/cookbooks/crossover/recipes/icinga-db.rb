@@ -48,7 +48,20 @@ mysql_database_user 'icinga' do
   action [:create, :grant]
 end
 
+# Copies sql script to local system
+cookbook_file '/tmp/mysql.txt' do
+  source 'mysql.sql'
+  owner 'root'
+  group 'root'
+  mode '0600'
+end
 
+
+# Initialize database
+execute 'initialize database' do
+  command "mysql -h 127.0.0.1 -u root -p#{node['crossover']['database']['root_password']} -D icinga < /tmp/mysql.sql"
+  not_if  "mysql -h 127.0.0.1 -u root -p#{node['crossover']['database']['root_password']} -D icinga  -e 'describe icinga_hosts;'"
+end
 
 #ruby_block 'edit conf' do
 #  block do

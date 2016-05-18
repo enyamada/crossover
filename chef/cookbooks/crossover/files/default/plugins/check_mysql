@@ -1,0 +1,14 @@
+#!/bin/bash
+#DO NOT add a blank space between -p and NRPEPASSWORD
+mysql_status=`/usr/bin/mysqladmin -u api -pyagg27 ping -h192.168.200.41 | /bin/cut -d " " -f 3`
+ 
+case $mysql_status in
+  alive)
+    echo "OK - $mysql_status Mysql is alive, running fine."
+    exit 0
+  ;;
+  *)
+    echo "CRITICAL - $mysql_status Mysql is DOWN."
+    exit 2
+  ;;
+esac

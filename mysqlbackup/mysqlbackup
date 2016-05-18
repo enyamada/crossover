@@ -54,6 +54,7 @@ get_options() {
                        echo "-h|--host=192.168.0.1 (host; defaults to 127.0.0.1)"
                        echo "-b|--bucket=s3-bucket-name (defaults to crossover-sa-east-1)"
                        echo "-d|--directory=/full/path to store locally the dumps (defaults to /tmp)"
+                       echo "-f|--file=/full/path to a .ini parameters file"
                        exit 1
                        ;;
 

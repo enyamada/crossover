@@ -10,4 +10,5 @@ depends 'mysql', '~> 7.0.0'
 depends 'selinux', '~> 0.9.0'
 depends 'mysql2_chef_gem', '~> 1.1.0'
 depends 'database', '~> 5.1.2'
-
+depends 'docker', '~> 2.7.1'
+depends 'poise-python', '~> 1.3.0'

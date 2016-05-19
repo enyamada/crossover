@@ -14,3 +14,8 @@ default['crossover']['database']['icinga_password'] = 'icinga'
 default['crossover']['database']['web_dbname'] = 'icingaweb_db'
 default['crossover']['database']['web_icinga_user'] = 'icingaweb'
 default['crossover']['database']['web_icinga_password'] = 'icingaweb'
+
+default['crossover']['aws']['AWS_SECRET_ACCESS_KEY'] = 'yy'
+default['crossover']['aws']['AWS_KEY_ID'] = 'xxx'
+default['crossover']['aws']['AWS_DEFAULT_REGION'] = 'sa-east-1'
+ 

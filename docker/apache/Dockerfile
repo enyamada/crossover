@@ -8,6 +8,8 @@ COPY ./passwd/passwords /etc/httpd/passwd/passwords
 
 # Copy config files
 COPY ./conf/* /usr/local/apache2/conf/
+ 
+RUN touch /tmp/x.x
 
-# Create log files
+## Create log files
 RUN mkdir -p /usr/local/apache2/logs

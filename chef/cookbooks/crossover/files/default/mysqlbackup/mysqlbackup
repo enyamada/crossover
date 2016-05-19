@@ -1,0 +1,115 @@
+#!/bin/bash
+set -eu
+
+#
+# This script dumps a Mysql database and then saves to the local disk temporarily
+# until it's uploaded to a aws s3 bucket.
+
+#
+# The AWS_ACCESS_KEY_ID, AWS_KEY_NAME and AWS_SECRET_ACCESS_KEY env variables
+# should be set properly in order to have access to AWS. ALternatively,
+# a ~/.aws/credentials file can be used.
+#
+
+
+USER=root
+PASSWORD=xover
+HOST=127.0.0.1
+BUCKET=crossover-sa-east-1
+LOCAL_DIR=/tmp
+PARAMETERS_FILE=none
+
+get_options() {
+        for i in "$@"
+        do
+                case $i in
+                    -u=*|--user=*)
+                       USER="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    -p=*|--password=*)
+                       PASSWORD="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    -h=*|--host=*)
+                       HOST="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    -b=*|--bucket=*)
+                       BUCKET="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    -d=*|--directory=*)
+                       LOCAL_DIR="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    -f=*|--file=*)
+                       PARAMETERS_FILE="${i#*=}"
+                       shift # past argument=value
+                       ;;
+                    *)
+                       echo "Options\n"
+                       echo "-u|--user=xxx (mysql user to be used to connect)"
+                       echo "-p|--password=yyy (mysql user password)"
+                       echo "-h|--host=192.168.0.1 (host; defaults to 127.0.0.1)"
+                       echo "-b|--bucket=s3-bucket-name (defaults to crossover-sa-east-1)"
+                       echo "-d|--directory=/full/path to store locally the dumps (defaults to /tmp)"
+                       echo "-f|--file=/full/path to a .ini parameters file"
+                       exit 1
+                       ;;
+
+                esac
+        done
+}
+
+notify() {
+
+        # Sends a notification to let the admin know that this script failed
+        # For now, we're simply sending an email. Depending on the context,
+        # a alert or trap should be sent to the appropriate server.
+
+        RECIPIENT="admin@acme.com"
+        echo $1 | mail -s "ALERT: mysql backup script failed" $RECIPIENT
+        echo $1
+}
+
+read_parameters_file() {
+
+     if [ -f $1 ]; then
+        USER=$(awk -F= '/USER/ {print $2}' $1)
+        PASSWORD=$(awk -F= '/PASSWORD/ {print $2}' $1)
+        HOST=$(awk -F= '/HOST/ {print $2}' $1)
+        BUCKET=$(awk -F= '/BUCKET/ {print $2}' $1)
+        LOCAL_DIR=$(awk -F= '/LOCAL_DIR/ {print $2}' $1)
+    fi
+}
+
+
+# Parse options passed in
+get_options $@
+
+if [ $PARAMETERS_FILE != "none" ]; then
+    read_parameters_file $PARAMETERS_FILE
+fi
+
+echo "USER=$USER"
+
+# Determine the archive name
+CURRENT_DATETIME=`date +%Y%m%d-%H%M%S`
+ARCHIVE_NAME=${LOCAL_DIR}/mysql-backup-${CURRENT_DATETIME}.tgz
+
+# Dumps the database server
+mysqldump --opt --user ${USER} --password=${PASSWORD} --host=${HOST} --all-databases > ${ARCHIVE_NAME} || { \
+        notify "Mysql dump failed."; \
+        exit 1; }
+
+# Copies to S3
+aws s3 cp $ARCHIVE_NAME s3://$BUCKET || { \
+       notify "Something went wrong when copying to S3. Please check"; \
+       rm $ARCHIVE_NAME
+       exit 1; }
+
+# If it' s ok, remove local copy
+rm $ARCHIVE_NAME
+exit 0
+

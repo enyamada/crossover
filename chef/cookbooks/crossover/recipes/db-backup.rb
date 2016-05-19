@@ -1,9 +1,9 @@
 #
 # Cookbook Name:: crossover
-# Recipe:: web-log
+# Recipe:: db-backup
 #
 # Copyright (c) 2016 The Authors, All Rights Reserved.
-# Install script to backup logs to s3
+# Install script to backup mysql to s3
 
 
 # Install awscli
@@ -15,8 +15,8 @@ package "mail and sendmail" do
    package_name ['mailx', 'sendmail']
 end
 
-cookbook_file "/usr/local/bin/logbackup" do
-  source "logbackup/logbackup"
+cookbook_file "/usr/local/bin/mysqlbackup" do
+  source "mysqlbackup/mysqlbackup"
   mode "0755"
   owner "root"
   group "root"
@@ -27,7 +27,7 @@ cron "logs periodic backup" do
   minute "0"
   hour   "19"
   user   "root"
-  command "/usr/local/bin/logbackup --numdays=7 --log-dir=/usr/local/apache2/logs --bucket=#{node['crossover']['log']['s3_bucket']}"
+  command "/usr/local/bin/logbackup --numdays=7 --log-dir=/usr/local/apache2/logs --bucket=crossover-sa-east-1"
 end
 
 directory "/root/.aws" do
@@ -47,13 +47,18 @@ template '/root/.aws/credentials' do
   })
 end
 
-template '/root/.aws/config' do
-  source 'aws/config.erb'
+template '/root/parameters.ini'
+  source 'mysqlbackup/parameters.erb'
   mode '0600'
   owner 'root'
   group 'root'
   variables({
-     :region => node['crossover']['aws']['AWS_DEFAULT_REGION'],
+     :user     => node['crossover']['db']['admin_user'],
+     :password => node['crossover']['db']['admin_password'],
+     :host     => node['crossover']['db']['host'],
+     :bucket   => node['crossover']['db']['s3_bucket']
   })
 end
+
+
 

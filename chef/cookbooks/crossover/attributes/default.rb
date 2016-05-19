@@ -19,3 +19,9 @@ default['crossover']['aws']['AWS_SECRET_ACCESS_KEY'] = 'yy'
 default['crossover']['aws']['AWS_KEY_ID'] = 'xxx'
 default['crossover']['aws']['AWS_DEFAULT_REGION'] = 'sa-east-1'
  
+default['crossover']['db']['admin_user'] = 'root'
+default['crossover']['db']['admin_password'] = 'xover'
+default['crossover']['db']['host'] = '127.0.0.1'
+default['crossover']['db']['s3_bucket'] = 'crossover-sa-east-1'
+
+default['crossover']['log']['s3_bucket'] = 'crossover-sa-east-1'

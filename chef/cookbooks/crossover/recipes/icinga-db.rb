@@ -63,10 +63,9 @@ execute 'initialize database' do
   not_if  "mysql -h 127.0.0.1 -u root -p#{node['crossover']['database']['root_password']} -D icinga  -e 'describe icinga_hosts;'"
 end
 
-#ruby_block 'edit conf' do
-#  block do
-#    p = node['crossover']['database']['root_password']
-#
-#    puts "password=#{node['crossover']['database']['root_password']}" 
-#  end
-#end
+
+# The "default" socket should point to the default instance
+link '/var/lib/mysql/mysql.sock'  do
+  to '/var/run/mysql-default/mysqld.sock' 
+  link_type :symbolic
+end

@@ -18,3 +18,11 @@ execute 'add apache to other groups' do
 end
 
 
+cookbook_file '/etc/php.ini' do
+  source 'php.ini'
+  owner 'root'
+  group 'root'
+  mode '0644'
+end
+
+

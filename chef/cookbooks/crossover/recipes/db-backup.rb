@@ -15,6 +15,8 @@ package "mail and sendmail" do
    package_name ['mailx', 'sendmail']
 end
 
+
+# backup script
 cookbook_file "/usr/local/bin/mysqlbackup" do
   source "mysqlbackup/mysqlbackup"
   mode "0755"
@@ -23,11 +25,11 @@ cookbook_file "/usr/local/bin/mysqlbackup" do
 end
 
 
-cron "logs periodic backup" do
+cron "mysql periodic backup" do
   minute "0"
   hour   "19"
   user   "root"
-  command "/usr/local/bin/logbackup --numdays=7 --log-dir=/usr/local/apache2/logs --bucket=crossover-sa-east-1"
+  command "/usr/local/bin/mysqlbackup --file=/root/parameters.ini"
 end
 
 directory "/root/.aws" do
@@ -36,6 +38,7 @@ directory "/root/.aws" do
   group "root"
 end
 
+# Install AWS credentials
 template '/root/.aws/credentials' do
   source 'aws/credentials.erb'
   mode '0600'
@@ -47,7 +50,8 @@ template '/root/.aws/credentials' do
   })
 end
 
-template '/root/parameters.ini'
+# Install backup parameters file
+template '/root/parameters.ini' do
   source 'mysqlbackup/parameters.erb'
   mode '0600'
   owner 'root'
@@ -59,6 +63,4 @@ template '/root/parameters.ini'
      :bucket   => node['crossover']['db']['s3_bucket']
   })
 end
-
-
 

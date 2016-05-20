@@ -8,7 +8,7 @@
 
 # icinga db has been dockerized. Install docker.
 docker_installation 'default' do
-  action :create
+  action [:create, :start]
 end
 
 # Pull latest image
